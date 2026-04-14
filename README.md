@@ -84,6 +84,8 @@ curl -X POST http://localhost:3000/sync-products
 ```
 
 ## 📁 Proje Yapısı
+
+```
 bubble-framer-sync/
 ├── src/
 │   ├── bubble.js          # Kategorileri Bubble'dan çeker
@@ -96,7 +98,7 @@ bubble-framer-sync/
 ├── .env.example           # Örnek environment dosyası
 ├── .last-sync             # Delta sync timestamp (otomatik oluşur, git'e ekleme)
 └── README.md
-
+```
 
 ## ⚠️ Önemli Notlar
 
