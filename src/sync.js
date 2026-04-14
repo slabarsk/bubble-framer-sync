@@ -1,18 +1,32 @@
 import { getProducts } from "./bubble.js";
-import { upsertItems, removeDeleted } from "./framer.js";
+import { upsertItems } from "./framer.js";
+import { getStoklar, getKategoriMap } from "./stok.js";
+import { upsertUrunler } from "./framer-urunler.js";
 
-export async function sync() {
-  console.log("🔄 Sync başlıyor...");
+export async function syncKategoriler() {
+  console.log("🔄 Kategori sync başlıyor...");
   const products = await getProducts();
-  console.log(`📦 Bubble'dan ${products.length} ürün alındı.`);
-
+  console.log(`📦 ${products.length} kategori alındı.`);
   await upsertItems(products);
-
-  // const bubbleIds = products.map((p) => p._id);
-  // await removeDeleted(bubbleIds);
-
-  console.log("✅ Sync tamamlandı.");
+  console.log("✅ Kategori sync tamamlandı.");
 }
 
-// Direkt çalıştırılırsa (node sync.js)
-if (process.argv[1].includes("sync.js")) sync();
+export async function syncUrunler() {
+  console.log("🔄 Ürün sync başlıyor...");
+  const kategoriMap = await getKategoriMap();
+  const urunler = await getStoklar();
+  await upsertUrunler(urunler, kategoriMap);
+  console.log("✅ Ürün sync tamamlandı.");
+}
+
+export async function sync() {
+  await syncKategoriler();
+  await syncUrunler();
+}
+
+const arg = process.argv[2];
+if (process.argv[1].includes("sync.js")) {
+  if (arg === "kategoriler") syncKategoriler();
+  else if (arg === "urunler") syncUrunler();
+  else sync();
+}
