@@ -15,6 +15,11 @@ function slugify(text) {
     .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
 }
 
+function makePath(text) {
+  if (!text) return "";
+  return text.split("›").map(s => slugify(s.trim())).join("/");
+}
+
 function fixImage(raw) {
   if (!raw) return null;
   if (raw.startsWith("//")) return "https:" + raw;
@@ -36,7 +41,6 @@ async function getFramerKategoriMap() {
   }
 }
 
-// Mevcut slugları ayrı bağlantıyla çek — büyük collection'da timeout önlemi
 async function getExistingSlugs() {
   const framer = await connect(PROJECT_URL, API_KEY);
   try {
@@ -68,6 +72,8 @@ function mapStok(urun, kategoriMap, framerKategoriMap) {
   const slug = slugify(ad);
   const image = fixImage(urun["Görseli"]);
   const fiyat = parseFloat(urun["Fiyat Satış"]) || 0;
+  const kat = kategoriMap[urun["Kategori"] || ""];
+  const kategoriPath = kat ? makePath(kat.yol) : "";
   const kategoriIds = getKategoriIds(urun, kategoriMap, framerKategoriMap);
 
   const fieldData = {
@@ -76,6 +82,7 @@ function mapStok(urun, kategoriMap, framerKategoriMap) {
     Lj6LSocrs: { type: "string", value: urun["Marka"] || "" },
     zrQU0HMQT: { type: "number", value: fiyat },
     g5D7z4KNx: { type: "string", value: urun["Birimi (OS)"] || "Adet" },
+    wyTWFfR7y: { type: "string", value: kategoriPath },
   };
 
   if (kategoriIds.length > 0) {
@@ -93,7 +100,6 @@ export async function upsertUrunler(urunler, kategoriMap) {
 
   const framerKategoriMap = await getFramerKategoriMap();
 
-  // Eklenecekleri filtrele, batch içi duplicate'leri de temizle
   const seenSlugs = new Set(existingSlugs);
   const toAdd = [];
   let kategorisiz = 0;
@@ -110,14 +116,12 @@ export async function upsertUrunler(urunler, kategoriMap) {
   console.log(`🆕 ${toAdd.length} yeni ürün eklenecek (${kategorisiz} kategorisiz).`);
   if (toAdd.length === 0) { console.log("✅ Eklenecek yeni ürün yok."); return; }
 
-  // Her batch için yeni bağlantı — timeout önlemi
   const batchSize = 25;
   for (let i = 0; i < toAdd.length; i += batchSize) {
-    const batch = toAdd.slice(i, i + batchSize);
     const framer = await connect(PROJECT_URL, API_KEY);
     try {
       const collection = await framer.getCollection(COLLECTION_ID);
-      await collection.addItems(batch);
+      await collection.addItems(toAdd.slice(i, i + batchSize));
     } finally {
       await framer.disconnect();
     }
